@@ -1,4 +1,4 @@
-requestAnimationFrame( 'dotenv' ).config();
+require( 'dotenv' ).config();
 
 //Config env variables
 const config = {

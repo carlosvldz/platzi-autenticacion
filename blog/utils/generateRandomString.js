@@ -4,7 +4,7 @@ const generateRandomString = function(length) {
     const possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     for (var i = 0; i < length; i++) {
-        randomString += possibleChars.chartAt(
+        randomString += possibleChars.charAt(
             Math.floor(Math.random() * possibleChars.length)
             );
         }
