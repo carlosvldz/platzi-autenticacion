@@ -1,4 +1,4 @@
-require( 'dotenv' ).config();
+require("dotenv").config();
 
 //Config env variables
 const config = {
@@ -7,4 +7,4 @@ const config = {
     spotifyRedirectUri: process.env.SPOTIFY_REDIRECT_URI
 };
 
-module.exports = { config: config }
+module.exports = { config: config };

@@ -1,19 +1,17 @@
 const express = require("express");
 const path = require("path");
-const request = require( 'request' );  //request http a servicios
-const querystring = require( 'querystring' );  //armar un querystring apartir de un objeto
-const cors = require('cors');  
-const cookieParser = require('cookie-parser');  //read stablish cookies in the request
+const request = require("request"); //request http to services
+const querystring = require("querystring"); //to build a querystring from an object
+const cors = require("cors");
+const cookieParser = require("cookie-parser"); // read stablished cookies in the request
 
-// utils
-const generateRandomString = require('./utils/generateRandomString');
-const encodeBasic = require('./utils/encodeBasic');
-const scopesArray = require('./utils/scopesArray'); //otorgar token con scopes necesarios
+const generateRandomString = require("./utils/generateRandomString");
+const encodeBasic = require("./utils/encodeBasic");
+const scopesArray = require("./utils/scopesArray"); //grant token with needed scopes
 
-const playlistMocks = require('./utils/mocks/playlist');
+const playlistMocks = require("./utils/mocks/playlist");
 
-//c config env variables
-const { config } =require('./config');
+const { config } = require("./config");
 
 const app = express();
 
@@ -28,17 +26,85 @@ app.use(cookieParser());
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
+function getUserInfo(accessToken) {
+  if (!accessToken) {
+    return Promise.resolve(null);
+  }
+
+  const options = {
+    url: "https://api.spotify.com/v1/me",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    json: true
+  };
+
+  return new Promise((resolve, reject) => {
+    request.get(options, function(error, response, body) {
+      if (error || response.statusCode !== 200) {
+        reject(error);
+      }
+
+      resolve(body);
+    });
+  });
+}
+
+function getUserPlaylists(accessToken, userId) {
+  if (!accessToken || !userId) {
+    return Promise.resolve(null);
+  }
+
+  const options = {
+    url: `https://api.spotify.com/v1/users/${userId}/playlists`,
+    headers: { Authorization: `Bearer ${accessToken}` },
+    json: true
+  };
+
+  return new Promise((resolve, reject) => {
+    request.get(options, function(error, response, body) {
+      if (error || response.statusCode !== 200) {
+        reject(error);
+      }
+
+      resolve(body);
+    });
+  });
+}
+
 // routes
 app.get("/", async function(req, res, next) {
-  res.render("posts", { posts: [{
-    title: "Guillermo's playlist",
-    description: "Creatine supplementation is the reference compound for increasing muscular creatine levels; there is variability in this increase, however, with some nonresponders.",
-    author: "Guillermo Rodas"
-  }] });
+  const { access_token: accessToken } = req.cookies;
+
+  try {
+    const userInfo = await getUserInfo(accessToken);
+    res.render("playlists", {
+      userInfo,
+      isHome: true,
+      playlists: { items: playlistMocks }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/playlists", async function(req, res, next) {
+  const { access_token: accessToken } = req.cookies;
+
+  if (!accessToken) {
+    return res.redirect("/");
+  }
+
+  try {
+    const userInfo = await getUserInfo(accessToken);
+    const userPlaylists = await getUserPlaylists(accessToken, userInfo.id);
+
+    res.render("playlists", { userInfo, playlists: userPlaylists });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // login endpoint
-app.get('/login', function(req, res) {
+app.get("/login", function(req, res) {
   const state = generateRandomString(16);
 
   const queryString = querystring.stringify({
@@ -53,12 +119,18 @@ app.get('/login', function(req, res) {
   res.redirect(`https://accounts.spotify.com/authorize?${queryString}`);
 });
 
+// logout endpoint
+app.get("/logout", function(req, res) {
+  res.clearCookie("access_token");
+  res.redirect("/");
+});
+
 // callback endpoint
 app.get("/callback", function(req, res, next) {
   const { code, state } = req.query;
   const { auth_state } = req.cookies;
 
-  if(state === null || state !== auth_state) {
+  if (state === null || state !== auth_state) {
     next(new Error("The state doesn't match"));
   }
 
@@ -79,10 +151,10 @@ app.get("/callback", function(req, res, next) {
     },
     json: true
   };
-  
+
   request.post(authOptions, function(error, response, body) {
     if (error || response.statusCode !== 200) {
-      next(new Error("The token is invalid"))
+      next(new Error("The token is invalid"));
     }
 
     res.cookie("access_token", body.access_token, { httpOnly: true });
