@@ -1,4 +1,4 @@
-//Set a random temporary state to prevent crawlscripting attacks
+//Set a random temporary state to prevent cross scripting attacks
 const generateRandomString = function(length) {
     let randomString = "";
     const possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"; // prettier-ignore
